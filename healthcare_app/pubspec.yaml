@@ -1,0 +1,45 @@
+name: healthcare_app
+description: "A healthcare service mobile app prototype with personalized health support."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.1 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  google_fonts: ^6.1.0
+  provider: ^6.1.1
+  intl: ^0.20.2 # Updated to a more recent compatible version
+  flutter_svg: ^2.0.9
+  shared_preferences: ^2.2.2
+  file_picker: ^10.1.2 # Updated to a more recent compatible version
+  table_calendar: ^3.0.9
+  flutter_local_notifications: ^17.0.0 # Added notification package
+  collection: ^1.18.0 # Added collection package for groupBy
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0 # Updated to a more recent compatible version
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+  
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+
