@@ -10,7 +10,7 @@ class MockDocumentSnapshot {
   MockDocumentSnapshot({required this.id, required Map<String, dynamic> data}) : _data = data;
 
   Map<String, dynamic>? data() => _data;
-  bool get exists => true; // Assume documents always exist in mock
+  bool get exists => _data.isNotEmpty; // Document exists if data is not empty
 }
 
 class MockQuerySnapshot {
@@ -34,9 +34,11 @@ class MockCollectionReference {
     return _service._getCollection(path);
   }
 
-  // Simulate getting a specific document
+  // Simulate getting a specific document reference
   MockDocumentReference doc(String id) {
-    return MockDocumentReference('$path/$id', _service);
+    // Ensure id is not empty
+    final docId = id.isEmpty ? 'mock_doc_${_service._docIdCounter++}' : id;
+    return MockDocumentReference('$path/$docId', _service);
   }
 
   // Simulate querying (very basic example)
@@ -72,6 +74,13 @@ class MockDocumentReference {
   Future<void> delete() async {
     _service._deleteDocument(path);
   }
+
+  // *** ADDED: Method to get a subcollection reference ***
+  MockCollectionReference collection(String subcollectionPath) {
+    // Construct the full path for the subcollection
+    final fullPath = '$path/$subcollectionPath';
+    return _service.collection(fullPath);
+  }
 }
 
 // Basic mock query class
@@ -96,6 +105,10 @@ class MockFirestoreService {
 
   // Simulate getting a collection reference
   MockCollectionReference collection(String path) {
+    // Basic validation for path format (optional)
+    if (path.isEmpty || path.contains('//') || path.startsWith('/') || path.endsWith('/')) {
+       throw ArgumentError('Invalid collection path: "$path"');
+    }
     return MockCollectionReference(path, this);
   }
 
@@ -113,8 +126,12 @@ class MockFirestoreService {
   Future<MockQuerySnapshot> _getCollection(String collectionPath, {String? filterField, dynamic filterValue}) async {
     await Future.delayed(const Duration(milliseconds: 100)); // Simulate delay
     final docs = <MockDocumentSnapshot>[];
+    // Ensure collectionPath ends with / for proper prefix matching of subcollections
+    final prefix = collectionPath.endsWith('/') ? collectionPath : '$collectionPath/';
+    
     _store.forEach((path, data) {
-      if (path.startsWith('$collectionPath/')) {
+      // Check if the path starts with the collection prefix AND is exactly one level deeper
+      if (path.startsWith(prefix) && path.substring(prefix.length).split('/').length == 1) {
         bool match = true;
         if (filterField != null && filterValue != null) {
           match = data[filterField] == filterValue;
@@ -136,7 +153,7 @@ class MockFirestoreService {
       return MockDocumentSnapshot(id: docPath.split('/').last, data: Map<String, dynamic>.from(_store[docPath]!));
     } else {
       print('MockFirestore: Doc $docPath not found');
-      // Simulate non-existent document - adjust as needed
+      // Simulate non-existent document
       return MockDocumentSnapshot(id: docPath.split('/').last, data: {}); 
     }
   }
@@ -157,6 +174,7 @@ class MockFirestoreService {
     } else {
       print('MockFirestore: Update failed - Doc $docPath not found');
       // Handle error or create if needed based on Firestore behavior
+      // For mock, we'll just log the error
     }
   }
 
@@ -165,6 +183,9 @@ class MockFirestoreService {
     await Future.delayed(const Duration(milliseconds: 50)); // Simulate delay
     if (_store.remove(docPath) != null) {
       print('MockFirestore: Deleted doc $docPath');
+      // Also remove potential subcollections (simple mock cleanup)
+      final subcollectionPrefix = '$docPath/';
+      _store.removeWhere((key, value) => key.startsWith(subcollectionPrefix));
     } else {
       print('MockFirestore: Delete failed - Doc $docPath not found');
     }
