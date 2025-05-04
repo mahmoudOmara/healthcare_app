@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:healthcare_app/services/mock/mock_auth_service.dart'; // Import Mock Auth
 import 'package:healthcare_app/services/mock/mock_firestore_service.dart'; // Import Mock Firestore
 import 'package:collection/collection.dart'; // Import for firstWhereOrNull
-
+//////
 class AppState extends ChangeNotifier {
   final MockAuthService _authService;
   final MockFirestoreService _firestoreService;

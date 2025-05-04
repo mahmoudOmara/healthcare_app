@@ -198,23 +198,19 @@ class MyApp extends StatelessWidget {
         // Use StreamBuilder to listen to auth state changes from MockAuthService
         home: StreamBuilder<MockUser?>(
           stream: mockAuthService.authStateChanges,
+          initialData: mockAuthService.currentUser, // <<< MODIFIED: Provide initial data
           builder: (context, snapshot) {
-            print("DEBUG: StreamBuilder builder running. ConnectionState: ${snapshot.connectionState}, HasData: ${snapshot.hasData}"); // <<< ADDED DEBUG LOG
-            
-            // Always show loading initially until the stream provides a definite state
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              print("DEBUG: StreamBuilder showing loading indicator (waiting)."); // <<< ADDED DEBUG LOG
-              return const Scaffold(body: Center(child: CircularProgressIndicator())); // Show loading indicator
-            }
-            
-            // Once the stream is active, decide based on data
-            if (snapshot.hasData) {
-              // User is logged in (mocked)
-              print("DEBUG: StreamBuilder showing MainScreen (user logged in)."); // <<< ADDED DEBUG LOG
+            // Enhanced Debug Log
+            print("DEBUG: StreamBuilder builder running. ConnectionState: ${snapshot.connectionState}, HasData: ${snapshot.hasData}, Data: ${snapshot.data}"); 
+
+            // If initialData is provided, we don't need to show a loading indicator for the initial state.
+            // The builder will run immediately with initialData (null in this case).
+
+            if (snapshot.hasData) { // snapshot.data will be non-null if user is logged in
+              print("DEBUG: StreamBuilder showing MainScreen (user logged in). User: ${snapshot.data?.uid}");
               return const MainScreen();
-            } else {
-              // User is logged out (mocked)
-              print("DEBUG: StreamBuilder showing LoginScreen (user logged out)."); // <<< ADDED DEBUG LOG
+            } else { // snapshot.data will be null if user is logged out (from initialData or stream event)
+              print("DEBUG: StreamBuilder showing LoginScreen (user logged out).");
               return const LoginScreen();
             }
           },
