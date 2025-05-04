@@ -48,22 +48,25 @@ class AppState extends ChangeNotifier {
   // --- Data Fetching ---
   Future<void> _fetchInitialData() async {
     if (_currentUser == null) return;
+    print("AppState: Starting _fetchInitialData..."); // DEBUG
     _isLoadingData = true;
     notifyListeners();
 
     try {
-      // Fetch all data concurrently
+      print("AppState: Calling Future.wait..."); // DEBUG
       await Future.wait([
         _fetchHealthIssues(),
         _fetchCalendarEvents(),
         _fetchHistoryLogs(),
         _fetchLinkedAccounts(),
-        // TODO: Add fetch method for Profile
+        _fetchUserProfile(), // Fetch user profile data
       ]);
+      print("AppState: Future.wait completed."); // DEBUG
     } catch (e) {
       print("Error fetching initial data: $e");
       // Handle error appropriately, maybe show a message to the user
     } finally {
+      print("AppState: Setting isLoadingData = false."); // DEBUG
       _isLoadingData = false;
       notifyListeners();
     }
@@ -116,7 +119,7 @@ class AppState extends ChangeNotifier {
       _historyLogs = snapshot.docs
           .map((doc) => HistoryLog.fromMap(doc.id, doc.data()!))
           .toList();
-      _historyLogs.sort((a, b) => b.date.compareTo(a.date));
+      _historyLogs.sort((a, b) => b.date.compareTo(a.date)); // Sort by date descending
       print("Fetched ${_historyLogs.length} history logs.");
     } catch (e) {
       print("Error fetching history logs: $e");
@@ -132,7 +135,6 @@ class AppState extends ChangeNotifier {
           .doc(_currentUser!.uid)
           .collection('linkedAccounts')
           .get();
-      // Note: Fetching nested health issues might require separate queries in real Firestore
       _linkedAccounts = snapshot.docs
           .map((doc) => LinkedAccount.fromMap(doc.id, doc.data()!))
           .toList();
@@ -143,6 +145,41 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  // Fetch User Profile Data
+  Future<void> _fetchUserProfile() async {
+     if (_currentUser == null) return;
+     print("AppState: Fetching user profile..."); // DEBUG
+     try {
+       // Get the user document itself, assuming profile data is stored there
+       final doc = await _firestoreService.collection('users').doc(_currentUser!.uid).get();
+       if (doc.exists && doc.data() != null) {
+          _userProfile = UserProfile.fromMap(doc.data()!); 
+          print("AppState: User profile fetched: ${_userProfile?.name}");
+       } else {
+          // If the user document doesn't exist or has no data, create a default profile
+          print("AppState: User profile document not found for ${_currentUser!.uid}. Creating default.");
+          _userProfile = UserProfile(
+             name: "Mock User",
+             dateOfBirth: DateTime(1990, 1, 1),
+             gender: "Other",
+             emergencyContact: "N/A",
+             preferredDoctor: "N/A",
+             language: "English",
+             subscription: "Monthly – 150 EGP" // Default plan
+          );
+          // Optionally save this default profile back to mock Firestore
+          // This assumes the user doc should exist after login, even if empty initially
+          await _firestoreService.collection('users').doc(_currentUser!.uid).set(_userProfile!.toMap());
+          print("AppState: Saved default user profile.");
+       }
+     } catch (e) {
+       print("Error fetching user profile: $e");
+       _userProfile = null; // Clear profile on error
+     }
+     print("AppState: Finished fetching user profile."); // DEBUG
+   }
+
+
   void _clearData() {
     _healthIssues = [];
     _linkedAccounts = [];
@@ -152,7 +189,7 @@ class AppState extends ChangeNotifier {
     // No notifyListeners here, handled by auth listener
   }
 
-  // --- Health Issue CRUD ---
+  // --- Health Issue CRUD (Unchanged) ---
   Future<void> addHealthIssue(HealthIssue issue) async {
     if (_currentUser == null) return;
     try {
@@ -208,7 +245,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  // --- Calendar Event CRUD ---
+  // --- Calendar Event CRUD (Unchanged) ---
   Future<void> addCalendarEvent(CalendarEvent event) async {
      if (_currentUser == null) return;
      try {
@@ -248,7 +285,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  // --- History Log ---
+  // --- History Log (Unchanged) ---
   Future<void> addHistoryLog(HistoryLog log) async {
     if (_currentUser == null) return;
     try {
@@ -258,7 +295,8 @@ class AppState extends ChangeNotifier {
           .doc(_currentUser!.uid)
           .collection('historyLogs')
           .add(data);
-      _historyLogs.insert(0, log.copyWith(id: docRef.id));
+      // Insert at beginning and re-sort to maintain order
+      _historyLogs.insert(0, log.copyWith(id: docRef.id)); 
       _historyLogs.sort((a, b) => b.date.compareTo(a.date));
       notifyListeners();
       print("Added history log: ${docRef.id}");
@@ -267,7 +305,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  // --- Linked Account CRUD ---
+  // --- Linked Account CRUD (Unchanged) ---
   Future<void> addLinkedAccount(LinkedAccount account) async {
     if (_currentUser == null) return;
     try {
@@ -328,11 +366,23 @@ class AppState extends ChangeNotifier {
     await _authService.signOut();
   }
 
-  void updateSubscription(String subscription) {
-    if (_userProfile != null) {
+  // Update Subscription - Now updates profile in mock Firestore
+  Future<void> updateSubscription(String subscription) async {
+    if (_userProfile != null && _currentUser != null) {
       _userProfile!.subscription = subscription;
-      // TODO: Update UserProfile in mock Firestore
-      notifyListeners();
+      try {
+        // Update the user document in mock Firestore
+        await _firestoreService
+            .collection('users')
+            .doc(_currentUser!.uid)
+            .update({'subscription': subscription});
+        print("AppState: Updated subscription in mock Firestore for ${_currentUser!.uid}");
+        notifyListeners();
+      } catch (e) {
+         print("Error updating subscription in mock Firestore: $e");
+      }
+    } else {
+       print("AppState: Cannot update subscription - user profile or current user is null.");
     }
   }
 
@@ -343,7 +393,54 @@ class AppState extends ChangeNotifier {
   }
 }
 
-// --- Models (Add toMap/fromMap) ---
+// --- Models ---
+
+// UserProfile Model
+class UserProfile {
+  String name;
+  DateTime dateOfBirth;
+  String gender;
+  String emergencyContact;
+  String preferredDoctor;
+  String language;
+  String subscription;
+
+  UserProfile({
+    required this.name,
+    required this.dateOfBirth,
+    required this.gender,
+    required this.emergencyContact,
+    required this.preferredDoctor,
+    required this.language,
+    required this.subscription,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'dateOfBirth': dateOfBirth.toIso8601String(),
+      'gender': gender,
+      'emergencyContact': emergencyContact,
+      'preferredDoctor': preferredDoctor,
+      'language': language,
+      'subscription': subscription,
+    };
+  }
+
+  factory UserProfile.fromMap(Map<String, dynamic> map) {
+    return UserProfile(
+      name: map['name'] ?? 'Unknown Name',
+      dateOfBirth: DateTime.tryParse(map['dateOfBirth'] ?? '') ?? DateTime.now(),
+      gender: map['gender'] ?? 'Unknown',
+      emergencyContact: map['emergencyContact'] ?? 'N/A',
+      preferredDoctor: map['preferredDoctor'] ?? 'N/A',
+      language: map['language'] ?? 'English',
+      subscription: map['subscription'] ?? 'None', // Default if missing
+    );
+  }
+}
+
+// HealthIssue Model (Unchanged)
 class HealthIssue {
   final String id;
   final String name;
@@ -425,6 +522,7 @@ class HealthIssue {
   }
 }
 
+// CalendarEvent Model (Unchanged)
 class CalendarEvent {
   final String id;
   final String title;
@@ -476,6 +574,7 @@ class CalendarEvent {
   }
 }
 
+// HistoryLog Model (Unchanged)
 class HistoryLog {
   final String id;
   final String title;
@@ -521,13 +620,12 @@ class HistoryLog {
   }
 }
 
+// LinkedAccount Model (Unchanged)
 class LinkedAccount {
   final String id;
   final String name;
   final String relationship;
-  // Storing nested HealthIssues directly in Firestore is complex.
-  // For mock, we store IDs. In real Firestore, this might be a subcollection or separate query.
-  final List<String> healthIssueIds; // Store IDs instead of full objects
+  final List<String> healthIssueIds; // Store IDs
 
   LinkedAccount({
     required this.id,
@@ -540,17 +638,22 @@ class LinkedAccount {
     return {
       'name': name,
       'relationship': relationship,
-      'healthIssueIds': healthIssueIds, // Store list of IDs
+      'healthIssueIds': healthIssueIds,
     };
   }
 
   factory LinkedAccount.fromMap(String id, Map<String, dynamic> map) {
+    // Ensure healthIssueIds is parsed correctly as List<String>
+    List<String> ids = [];
+    if (map['healthIssueIds'] is List) {
+      ids = List<String>.from(map['healthIssueIds'].map((item) => item.toString()));
+    }
+    
     return LinkedAccount(
       id: id,
       name: map['name'] ?? '',
       relationship: map['relationship'] ?? '',
-      // Ensure healthIssueIds is always a List<String>
-      healthIssueIds: List<String>.from(map['healthIssueIds'] ?? []), 
+      healthIssueIds: ids,
     );
   }
 
@@ -567,27 +670,5 @@ class LinkedAccount {
       healthIssueIds: healthIssueIds ?? this.healthIssueIds,
     );
   }
-}
-
-// TODO: Add toMap/fromMap for UserProfile
-
-class UserProfile {
-  final String name;
-  final DateTime dateOfBirth;
-  final String gender;
-  final String emergencyContact;
-  final String preferredDoctor;
-  final String language;
-  String subscription;
-
-  UserProfile({
-    required this.name,
-    required this.dateOfBirth,
-    required this.gender,
-    required this.emergencyContact,
-    required this.preferredDoctor,
-    required this.language,
-    required this.subscription,
-  });
 }
 
