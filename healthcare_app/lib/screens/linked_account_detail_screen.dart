@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:healthcare_app/providers/app_state.dart';
 import 'package:healthcare_app/screens/health_issue_detail_screen.dart'; // Reuse detail screen for consistency
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart'; // Import Provider
 
 class LinkedAccountDetailScreen extends StatelessWidget {
   final LinkedAccount account;
@@ -10,6 +11,14 @@ class LinkedAccountDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Access AppState to get the full list of health issues
+    final appState = Provider.of<AppState>(context, listen: false);
+    
+    // Filter the main health issues list based on the IDs stored in the linked account
+    final List<HealthIssue> linkedAccountIssues = appState.healthIssues
+        .where((issue) => account.healthIssueIds.contains(issue.id))
+        .toList();
+
     return Scaffold(
       appBar: AppBar(
         title: Text(account.name),
@@ -34,10 +43,11 @@ class LinkedAccountDetailScreen extends StatelessWidget {
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
-          if (account.healthIssues.isEmpty)
+          // Use the filtered list 'linkedAccountIssues'
+          if (linkedAccountIssues.isEmpty)
             const Center(child: Text('No health issues recorded for this account.'))
           else
-            ...account.healthIssues.map((issue) {
+            ...linkedAccountIssues.map((issue) { // Iterate over the filtered list
               return Card(
                 elevation: 1.0,
                 margin: const EdgeInsets.symmetric(vertical: 6.0),
