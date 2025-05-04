@@ -16,17 +16,21 @@ final MockAuthService mockAuthService = MockAuthService(); // Use Mock Auth
 final MockFirestoreService mockFirestoreService = MockFirestoreService(); // Use Mock Firestore
 
 Future<void> main() async {
+  print("DEBUG: main() started."); // <<< ADDED DEBUG LOG
   // Ensure Flutter bindings are initialized
   WidgetsFlutterBinding.ensureInitialized();
+  print("DEBUG: WidgetsFlutterBinding initialized."); // <<< ADDED DEBUG LOG
   
   // Initialize notification service
   await notificationService.init();
+  print("DEBUG: NotificationService initialized."); // <<< ADDED DEBUG LOG
   
   // TODO: Initialize Firebase here when using real Firebase
   // await Firebase.initializeApp(
   //   options: DefaultFirebaseOptions.currentPlatform, // Use generated options
   // );
   
+  print("DEBUG: Running MyApp..."); // <<< ADDED DEBUG LOG
   runApp(const MyApp());
 }
 
@@ -35,6 +39,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print("DEBUG: MyApp build() started."); // <<< ADDED DEBUG LOG
     // Define the primary color and grey palette based on requirements
     const primaryColor = Color(0xFF2563EB); // blue-600
     const grayPalette = {
@@ -86,7 +91,10 @@ class MyApp extends StatelessWidget {
     // Use MultiProvider to provide AppState and Mock Services
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (context) => AppState(mockAuthService, mockFirestoreService)), // Pass mock services to AppState
+        ChangeNotifierProvider(create: (context) {
+           print("DEBUG: Creating AppState..."); // <<< ADDED DEBUG LOG
+           return AppState(mockAuthService, mockFirestoreService);
+        }),
         Provider<MockAuthService>.value(value: mockAuthService),
         Provider<MockFirestoreService>.value(value: mockFirestoreService),
         // When using real Firebase, provide FirebaseAuth.instance and FirebaseFirestore.instance here
@@ -191,14 +199,22 @@ class MyApp extends StatelessWidget {
         home: StreamBuilder<MockUser?>(
           stream: mockAuthService.authStateChanges,
           builder: (context, snapshot) {
+            print("DEBUG: StreamBuilder builder running. ConnectionState: ${snapshot.connectionState}, HasData: ${snapshot.hasData}"); // <<< ADDED DEBUG LOG
+            
+            // Always show loading initially until the stream provides a definite state
             if (snapshot.connectionState == ConnectionState.waiting) {
+              print("DEBUG: StreamBuilder showing loading indicator (waiting)."); // <<< ADDED DEBUG LOG
               return const Scaffold(body: Center(child: CircularProgressIndicator())); // Show loading indicator
             }
+            
+            // Once the stream is active, decide based on data
             if (snapshot.hasData) {
               // User is logged in (mocked)
+              print("DEBUG: StreamBuilder showing MainScreen (user logged in)."); // <<< ADDED DEBUG LOG
               return const MainScreen();
             } else {
               // User is logged out (mocked)
+              print("DEBUG: StreamBuilder showing LoginScreen (user logged out)."); // <<< ADDED DEBUG LOG
               return const LoginScreen();
             }
           },
