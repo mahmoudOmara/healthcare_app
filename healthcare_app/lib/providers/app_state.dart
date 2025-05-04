@@ -1,318 +1,349 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:healthcare_app/services/mock/mock_auth_service.dart'; // Import Mock Auth
+import 'package:healthcare_app/services/mock/mock_firestore_service.dart'; // Import Mock Firestore
+import 'package:collection/collection.dart'; // Import for firstWhereOrNull
 
 class AppState extends ChangeNotifier {
+  final MockAuthService _authService;
+  final MockFirestoreService _firestoreService;
+  StreamSubscription<MockUser?>? _authStateSubscription;
+
   // User authentication state
-  bool _isLoggedIn = false;
-  
-  // Health issues list
-  final List<HealthIssue> _healthIssues = [
-    HealthIssue(
-      id: '1',
-      name: 'Hypertension',
-      startDate: DateTime(2024, 10, 15),
-      severity: 'Moderate',
-      status: 'Ongoing',
-      symptoms: 'Headaches, dizziness, shortness of breath',
-      medications: 'Lisinopril 10mg daily',
-      doctor: 'Dr. Sarah Johnson',
-      isRecurring: true,
-      nextFollowUp: DateTime(2025, 5, 15),
-    ),
-    HealthIssue(
-      id: '2',
-      name: 'Diabetes Type 2',
-      startDate: DateTime(2023, 6, 10),
-      severity: 'Severe',
-      status: 'Ongoing',
-      symptoms: 'Increased thirst, frequent urination, fatigue',
-      medications: 'Metformin 500mg twice daily',
-      doctor: 'Dr. Michael Chen',
-      isRecurring: true,
-      nextFollowUp: DateTime(2025, 5, 5),
-    ),
-    HealthIssue(
-      id: '3',
-      name: 'Asthma',
-      startDate: DateTime(2020, 3, 22),
-      severity: 'Mild',
-      status: 'Ongoing',
-      symptoms: 'Wheezing, coughing, chest tightness',
-      medications: 'Albuterol inhaler as needed',
-      doctor: 'Dr. Emily Rodriguez',
-      isRecurring: true,
-      nextFollowUp: DateTime(2025, 6, 12),
-    ),
-    HealthIssue(
-      id: '4',
-      name: 'Migraine',
-      startDate: DateTime(2024, 2, 5),
-      severity: 'Moderate',
-      status: 'Ongoing',
-      symptoms: 'Severe headache, nausea, light sensitivity',
-      medications: 'Sumatriptan as needed',
-      doctor: 'Dr. James Wilson',
-      isRecurring: true,
-      nextFollowUp: DateTime(2025, 5, 20),
-    ),
-    HealthIssue(
-      id: '5',
-      name: 'Allergic Rhinitis',
-      startDate: DateTime(2022, 4, 15),
-      severity: 'Mild',
-      status: 'Seasonal',
-      symptoms: 'Sneezing, runny nose, itchy eyes',
-      medications: 'Cetirizine 10mg daily during season',
-      doctor: 'Dr. Lisa Park',
-      isRecurring: true,
-      nextFollowUp: DateTime(2025, 7, 10),
-    ),
-    HealthIssue(
-      id: '6',
-      name: 'Lower Back Pain',
-      startDate: DateTime(2023, 11, 8),
-      severity: 'Moderate',
-      status: 'Improving',
-      symptoms: 'Pain in lower back, stiffness, limited mobility',
-      medications: 'Ibuprofen as needed, muscle relaxants',
-      doctor: 'Dr. Robert Thompson',
-      isRecurring: false,
-      nextFollowUp: DateTime(2025, 5, 25),
-    ),
-    HealthIssue(
-      id: '7',
-      name: 'Gastroesophageal Reflux Disease',
-      startDate: DateTime(2023, 8, 20),
-      severity: 'Moderate',
-      status: 'Ongoing',
-      symptoms: 'Heartburn, regurgitation, chest pain',
-      medications: 'Omeprazole 20mg daily',
-      doctor: 'Dr. Sophia Martinez',
-      isRecurring: true,
-      nextFollowUp: DateTime(2025, 6, 5),
-    ),
-    HealthIssue(
-      id: '8',
-      name: 'Insomnia',
-      startDate: DateTime(2024, 1, 15),
-      severity: 'Moderate',
-      status: 'Improving',
-      symptoms: 'Difficulty falling asleep, daytime fatigue',
-      medications: 'Melatonin 5mg before bed',
-      doctor: 'Dr. David Kim',
-      isRecurring: false,
-      nextFollowUp: DateTime(2025, 5, 30),
-    ),
-    HealthIssue(
-      id: '9',
-      name: 'Eczema',
-      startDate: DateTime(2021, 7, 12),
-      severity: 'Mild',
-      status: 'Controlled',
-      symptoms: 'Dry, itchy, inflamed skin patches',
-      medications: 'Hydrocortisone cream as needed',
-      doctor: 'Dr. Amanda Lee',
-      isRecurring: true,
-      nextFollowUp: DateTime(2025, 8, 15),
-    ),
-    HealthIssue(
-      id: '10',
-      name: 'Hypothyroidism',
-      startDate: DateTime(2022, 9, 5),
-      severity: 'Moderate',
-      status: 'Ongoing',
-      symptoms: 'Fatigue, weight gain, cold intolerance',
-      medications: 'Levothyroxine 50mcg daily',
-      doctor: 'Dr. Thomas Brown',
-      isRecurring: true,
-      nextFollowUp: DateTime(2025, 6, 20),
-    ),
-  ];
-  
-  // Linked accounts
-  final List<LinkedAccount> _linkedAccounts = [
-    LinkedAccount(
-      id: '1',
-      name: 'Mom',
-      relationship: 'Mother',
-      healthIssues: [
-        HealthIssue(
-          id: 'm1',
-          name: 'Hypertension',
-          startDate: DateTime(2020, 5, 10),
-          severity: 'Moderate',
-          status: 'Ongoing',
-          symptoms: 'Occasional headaches',
-          medications: 'Amlodipine 5mg daily',
-          doctor: 'Dr. Jennifer Adams',
-          isRecurring: true,
-          nextFollowUp: DateTime(2025, 6, 15),
-        ),
-      ],
-    ),
-    LinkedAccount(
-      id: '2',
-      name: 'Dad',
-      relationship: 'Father',
-      healthIssues: [
-        HealthIssue(
-          id: 'd1',
-          name: 'Diabetes',
-          startDate: DateTime(2018, 3, 22),
-          severity: 'Moderate',
-          status: 'Ongoing',
-          symptoms: 'Fatigue, increased thirst',
-          medications: 'Insulin injections, Metformin',
-          doctor: 'Dr. Richard Taylor',
-          isRecurring: true,
-          nextFollowUp: DateTime(2025, 5, 10),
-        ),
-      ],
-    ),
-    LinkedAccount(
-      id: '3',
-      name: 'Ahmed',
-      relationship: 'Brother',
-      healthIssues: [
-        HealthIssue(
-          id: 'a1',
-          name: 'Allergy',
-          startDate: DateTime(2023, 4, 15),
-          severity: 'Mild',
-          status: 'Seasonal',
-          symptoms: 'Sneezing, itchy eyes',
-          medications: 'Loratadine 10mg as needed',
-          doctor: 'Dr. Sarah Johnson',
-          isRecurring: true,
-          nextFollowUp: DateTime(2025, 7, 5),
-        ),
-      ],
-    ),
-  ];
-  
-  // Calendar events
-  final List<CalendarEvent> _calendarEvents = [
-    CalendarEvent(
-      id: '1',
-      title: 'Take Blood Pressure Medication',
-      date: DateTime.now().add(const Duration(days: 3)),
-      type: 'Medication',
-      isCompleted: false,
-    ),
-    CalendarEvent(
-      id: '2',
-      title: 'Dr. Johnson Appointment',
-      date: DateTime.now().add(const Duration(days: 5)),
-      type: 'Appointment',
-      isCompleted: false,
-    ),
-    CalendarEvent(
-      id: '3',
-      title: 'Blood Test',
-      date: DateTime.now().add(const Duration(days: 7)),
-      type: 'Custom',
-      isCompleted: false,
-    ),
-  ];
-  
-  // History logs
-  final List<HistoryLog> _historyLogs = [
-    HistoryLog(
-      id: '1',
-      title: 'Took Blood Pressure Medication',
-      date: DateTime.now().subtract(const Duration(days: 1)),
-      type: 'Medication',
-    ),
-    HistoryLog(
-      id: '2',
-      title: 'Uploaded Blood Test Results',
-      date: DateTime.now().subtract(const Duration(days: 2)),
-      type: 'File Upload',
-    ),
-    HistoryLog(
-      id: '3',
-      title: 'Chat with Support Agent',
-      date: DateTime.now().subtract(const Duration(days: 3)),
-      type: 'Chat',
-    ),
-    HistoryLog(
-      id: '4',
-      title: 'Dr. Wilson Appointment',
-      date: DateTime.now().subtract(const Duration(days: 5)),
-      type: 'Doctor Visit',
-    ),
-    HistoryLog(
-      id: '5',
-      title: 'Set Medication Reminder',
-      date: DateTime.now().subtract(const Duration(days: 7)),
-      type: 'Reminder',
-    ),
-  ];
-  
-  // User profile
-  final UserProfile _userProfile = UserProfile(
-    name: 'Alex Johnson',
-    dateOfBirth: DateTime(1985, 5, 15),
-    gender: 'Male',
-    emergencyContact: 'Sarah Johnson (Wife) - +1 234 567 8901',
-    preferredDoctor: 'Dr. Michael Chen',
-    language: 'English',
-    subscription: 'Monthly – 150 EGP',
-  );
-  
+  MockUser? _currentUser;
+  bool _isLoadingData = false;
+
+  // Data lists (will be fetched from mock firestore)
+  List<HealthIssue> _healthIssues = [];
+  List<LinkedAccount> _linkedAccounts = [];
+  List<CalendarEvent> _calendarEvents = [];
+  List<HistoryLog> _historyLogs = [];
+  UserProfile? _userProfile;
+
+  AppState(this._authService, this._firestoreService) {
+    // Listen to authentication state changes from the mock service
+    _authStateSubscription = _authService.authStateChanges.listen((user) {
+      _currentUser = user;
+      if (_currentUser != null) {
+        print('AppState: User logged in (mock): ${_currentUser!.uid}');
+        _fetchInitialData(); // Fetch data when user logs in
+      } else {
+        print('AppState: User logged out (mock)');
+        _clearData(); // Clear data when user logs out
+      }
+      notifyListeners(); // Notify listeners about auth state change
+    });
+  }
+
   // Getters
-  bool get isLoggedIn => _isLoggedIn;
+  bool get isLoggedIn => _currentUser != null;
+  MockUser? get currentUser => _currentUser;
+  bool get isLoadingData => _isLoadingData;
   List<HealthIssue> get healthIssues => _healthIssues;
   List<LinkedAccount> get linkedAccounts => _linkedAccounts;
   List<CalendarEvent> get calendarEvents => _calendarEvents;
   List<HistoryLog> get historyLogs => _historyLogs;
-  UserProfile get userProfile => _userProfile;
-  
-  // Methods
-  void login() {
-    _isLoggedIn = true;
+  UserProfile? get userProfile => _userProfile;
+
+  // --- Data Fetching ---
+  Future<void> _fetchInitialData() async {
+    if (_currentUser == null) return;
+    _isLoadingData = true;
     notifyListeners();
-  }
-  
-  void logout() {
-    _isLoggedIn = false;
-    notifyListeners();
-  }
-  
-  void addHealthIssue(HealthIssue issue) {
-    _healthIssues.add(issue);
-    notifyListeners();
-  }
-  
-  void updateHealthIssue(HealthIssue updatedIssue) {
-    final index = _healthIssues.indexWhere((issue) => issue.id == updatedIssue.id);
-    if (index != -1) {
-      _healthIssues[index] = updatedIssue;
+
+    try {
+      // Fetch all data concurrently
+      await Future.wait([
+        _fetchHealthIssues(),
+        _fetchCalendarEvents(),
+        _fetchHistoryLogs(),
+        _fetchLinkedAccounts(),
+        // TODO: Add fetch method for Profile
+      ]);
+    } catch (e) {
+      print("Error fetching initial data: $e");
+      // Handle error appropriately, maybe show a message to the user
+    } finally {
+      _isLoadingData = false;
       notifyListeners();
     }
   }
-  
-  void toggleCalendarEventCompletion(String id) {
+
+  Future<void> _fetchHealthIssues() async {
+    if (_currentUser == null) return;
+    try {
+      final snapshot = await _firestoreService
+          .collection('users')
+          .doc(_currentUser!.uid)
+          .collection('healthIssues')
+          .get();
+      _healthIssues = snapshot.docs
+          .map((doc) => HealthIssue.fromMap(doc.id, doc.data()!))
+          .toList();
+      print("Fetched ${_healthIssues.length} health issues.");
+    } catch (e) {
+      print("Error fetching health issues: $e");
+      _healthIssues = []; // Clear list on error
+    }
+  }
+
+  Future<void> _fetchCalendarEvents() async {
+    if (_currentUser == null) return;
+    try {
+      final snapshot = await _firestoreService
+          .collection('users')
+          .doc(_currentUser!.uid)
+          .collection('calendarEvents')
+          .get();
+      _calendarEvents = snapshot.docs
+          .map((doc) => CalendarEvent.fromMap(doc.id, doc.data()!))
+          .toList();
+      print("Fetched ${_calendarEvents.length} calendar events.");
+    } catch (e) {
+      print("Error fetching calendar events: $e");
+      _calendarEvents = []; // Clear list on error
+    }
+  }
+
+  Future<void> _fetchHistoryLogs() async {
+    if (_currentUser == null) return;
+    try {
+      final snapshot = await _firestoreService
+          .collection('users')
+          .doc(_currentUser!.uid)
+          .collection('historyLogs')
+          .get();
+      _historyLogs = snapshot.docs
+          .map((doc) => HistoryLog.fromMap(doc.id, doc.data()!))
+          .toList();
+      _historyLogs.sort((a, b) => b.date.compareTo(a.date));
+      print("Fetched ${_historyLogs.length} history logs.");
+    } catch (e) {
+      print("Error fetching history logs: $e");
+      _historyLogs = []; // Clear list on error
+    }
+  }
+
+  Future<void> _fetchLinkedAccounts() async {
+    if (_currentUser == null) return;
+    try {
+      final snapshot = await _firestoreService
+          .collection('users')
+          .doc(_currentUser!.uid)
+          .collection('linkedAccounts')
+          .get();
+      // Note: Fetching nested health issues might require separate queries in real Firestore
+      _linkedAccounts = snapshot.docs
+          .map((doc) => LinkedAccount.fromMap(doc.id, doc.data()!))
+          .toList();
+      print("Fetched ${_linkedAccounts.length} linked accounts.");
+    } catch (e) {
+      print("Error fetching linked accounts: $e");
+      _linkedAccounts = []; // Clear list on error
+    }
+  }
+
+  void _clearData() {
+    _healthIssues = [];
+    _linkedAccounts = [];
+    _calendarEvents = [];
+    _historyLogs = [];
+    _userProfile = null;
+    // No notifyListeners here, handled by auth listener
+  }
+
+  // --- Health Issue CRUD ---
+  Future<void> addHealthIssue(HealthIssue issue) async {
+    if (_currentUser == null) return;
+    try {
+      final data = issue.toMap();
+      final docRef = await _firestoreService
+          .collection('users')
+          .doc(_currentUser!.uid)
+          .collection('healthIssues')
+          .add(data);
+      _healthIssues.add(issue.copyWith(id: docRef.id));
+      notifyListeners();
+      print("Added health issue: ${docRef.id}");
+    } catch (e) {
+      print("Error adding health issue: $e");
+    }
+  }
+
+  Future<void> updateHealthIssue(HealthIssue updatedIssue) async {
+    if (_currentUser == null) return;
+    try {
+      final data = updatedIssue.toMap();
+      await _firestoreService
+          .collection('users')
+          .doc(_currentUser!.uid)
+          .collection('healthIssues')
+          .doc(updatedIssue.id)
+          .update(data);
+      final index = _healthIssues.indexWhere((issue) => issue.id == updatedIssue.id);
+      if (index != -1) {
+        _healthIssues[index] = updatedIssue;
+        notifyListeners();
+        print("Updated health issue: ${updatedIssue.id}");
+      }
+    } catch (e) {
+      print("Error updating health issue: $e");
+    }
+  }
+
+  Future<void> deleteHealthIssue(String issueId) async {
+    if (_currentUser == null) return;
+    try {
+      await _firestoreService
+          .collection('users')
+          .doc(_currentUser!.uid)
+          .collection('healthIssues')
+          .doc(issueId)
+          .delete();
+      _healthIssues.removeWhere((issue) => issue.id == issueId);
+      notifyListeners();
+      print("Deleted health issue: $issueId");
+    } catch (e) {
+      print("Error deleting health issue: $e");
+    }
+  }
+
+  // --- Calendar Event CRUD ---
+  Future<void> addCalendarEvent(CalendarEvent event) async {
+     if (_currentUser == null) return;
+     try {
+       final data = event.toMap();
+       final docRef = await _firestoreService
+           .collection('users')
+           .doc(_currentUser!.uid)
+           .collection('calendarEvents')
+           .add(data);
+       _calendarEvents.add(event.copyWith(id: docRef.id));
+       notifyListeners();
+       print("Added calendar event: ${docRef.id}");
+     } catch (e) {
+       print("Error adding calendar event: $e");
+     }
+   }
+
+  Future<void> toggleCalendarEventCompletion(String id) async {
+    if (_currentUser == null) return;
     final index = _calendarEvents.indexWhere((event) => event.id == id);
     if (index != -1) {
-      _calendarEvents[index] = _calendarEvents[index].copyWith(
-        isCompleted: !_calendarEvents[index].isCompleted,
-      );
+      final event = _calendarEvents[index];
+      final updatedEvent = event.copyWith(isCompleted: !event.isCompleted);
+      try {
+        await _firestoreService
+            .collection('users')
+            .doc(_currentUser!.uid)
+            .collection('calendarEvents')
+            .doc(id)
+            .update({'isCompleted': updatedEvent.isCompleted});
+        _calendarEvents[index] = updatedEvent;
+        notifyListeners();
+        print("Toggled calendar event completion: $id");
+      } catch (e) {
+        print("Error toggling calendar event completion: $e");
+      }
+    }
+  }
+
+  // --- History Log ---
+  Future<void> addHistoryLog(HistoryLog log) async {
+    if (_currentUser == null) return;
+    try {
+      final data = log.toMap();
+      final docRef = await _firestoreService
+          .collection('users')
+          .doc(_currentUser!.uid)
+          .collection('historyLogs')
+          .add(data);
+      _historyLogs.insert(0, log.copyWith(id: docRef.id));
+      _historyLogs.sort((a, b) => b.date.compareTo(a.date));
+      notifyListeners();
+      print("Added history log: ${docRef.id}");
+    } catch (e) {
+      print("Error adding history log: $e");
+    }
+  }
+
+  // --- Linked Account CRUD ---
+  Future<void> addLinkedAccount(LinkedAccount account) async {
+    if (_currentUser == null) return;
+    try {
+      final data = account.toMap();
+      final docRef = await _firestoreService
+          .collection('users')
+          .doc(_currentUser!.uid)
+          .collection('linkedAccounts')
+          .add(data);
+      _linkedAccounts.add(account.copyWith(id: docRef.id));
+      notifyListeners();
+      print("Added linked account: ${docRef.id}");
+    } catch (e) {
+      print("Error adding linked account: $e");
+    }
+  }
+
+  Future<void> updateLinkedAccount(LinkedAccount updatedAccount) async {
+    if (_currentUser == null) return;
+    try {
+      final data = updatedAccount.toMap();
+      await _firestoreService
+          .collection('users')
+          .doc(_currentUser!.uid)
+          .collection('linkedAccounts')
+          .doc(updatedAccount.id)
+          .update(data);
+      final index = _linkedAccounts.indexWhere((acc) => acc.id == updatedAccount.id);
+      if (index != -1) {
+        _linkedAccounts[index] = updatedAccount;
+        notifyListeners();
+        print("Updated linked account: ${updatedAccount.id}");
+      }
+    } catch (e) {
+      print("Error updating linked account: $e");
+    }
+  }
+
+  Future<void> deleteLinkedAccount(String accountId) async {
+    if (_currentUser == null) return;
+    try {
+      await _firestoreService
+          .collection('users')
+          .doc(_currentUser!.uid)
+          .collection('linkedAccounts')
+          .doc(accountId)
+          .delete();
+      _linkedAccounts.removeWhere((acc) => acc.id == accountId);
+      notifyListeners();
+      print("Deleted linked account: $accountId");
+    } catch (e) {
+      print("Error deleting linked account: $e");
+    }
+  }
+
+  // --- Other Methods ---
+  Future<void> signOut() async {
+    await _authService.signOut();
+  }
+
+  void updateSubscription(String subscription) {
+    if (_userProfile != null) {
+      _userProfile!.subscription = subscription;
+      // TODO: Update UserProfile in mock Firestore
       notifyListeners();
     }
   }
-  
-  void addHistoryLog(HistoryLog log) {
-    _historyLogs.add(log);
-    notifyListeners();
-  }
-  
-  void updateSubscription(String subscription) {
-    _userProfile.subscription = subscription;
-    notifyListeners();
+
+  @override
+  void dispose() {
+    _authStateSubscription?.cancel();
+    super.dispose();
   }
 }
 
-// Models
+// --- Models (Add toMap/fromMap) ---
 class HealthIssue {
   final String id;
   final String name;
@@ -324,7 +355,7 @@ class HealthIssue {
   final String doctor;
   final bool isRecurring;
   final DateTime nextFollowUp;
-  
+
   HealthIssue({
     required this.id,
     required this.name,
@@ -337,7 +368,36 @@ class HealthIssue {
     required this.isRecurring,
     required this.nextFollowUp,
   });
-  
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'startDate': startDate.toIso8601String(),
+      'severity': severity,
+      'status': status,
+      'symptoms': symptoms,
+      'medications': medications,
+      'doctor': doctor,
+      'isRecurring': isRecurring,
+      'nextFollowUp': nextFollowUp.toIso8601String(),
+    };
+  }
+
+  factory HealthIssue.fromMap(String id, Map<String, dynamic> map) {
+    return HealthIssue(
+      id: id,
+      name: map['name'] ?? '',
+      startDate: DateTime.tryParse(map['startDate'] ?? '') ?? DateTime.now(),
+      severity: map['severity'] ?? '',
+      status: map['status'] ?? '',
+      symptoms: map['symptoms'] ?? '',
+      medications: map['medications'] ?? '',
+      doctor: map['doctor'] ?? '',
+      isRecurring: map['isRecurring'] ?? false,
+      nextFollowUp: DateTime.tryParse(map['nextFollowUp'] ?? '') ?? DateTime.now(),
+    );
+  }
+
   HealthIssue copyWith({
     String? id,
     String? name,
@@ -365,27 +425,13 @@ class HealthIssue {
   }
 }
 
-class LinkedAccount {
-  final String id;
-  final String name;
-  final String relationship;
-  final List<HealthIssue> healthIssues;
-  
-  LinkedAccount({
-    required this.id,
-    required this.name,
-    required this.relationship,
-    required this.healthIssues,
-  });
-}
-
 class CalendarEvent {
   final String id;
   final String title;
   final DateTime date;
   final String type;
   final bool isCompleted;
-  
+
   CalendarEvent({
     required this.id,
     required this.title,
@@ -393,7 +439,26 @@ class CalendarEvent {
     required this.type,
     required this.isCompleted,
   });
-  
+
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'date': date.toIso8601String(),
+      'type': type,
+      'isCompleted': isCompleted,
+    };
+  }
+
+  factory CalendarEvent.fromMap(String id, Map<String, dynamic> map) {
+    return CalendarEvent(
+      id: id,
+      title: map['title'] ?? '',
+      date: DateTime.tryParse(map['date'] ?? '') ?? DateTime.now(),
+      type: map['type'] ?? '',
+      isCompleted: map['isCompleted'] ?? false,
+    );
+  }
+
   CalendarEvent copyWith({
     String? id,
     String? title,
@@ -416,14 +481,95 @@ class HistoryLog {
   final String title;
   final DateTime date;
   final String type;
-  
+
   HistoryLog({
     required this.id,
     required this.title,
     required this.date,
     required this.type,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'date': date.toIso8601String(),
+      'type': type,
+    };
+  }
+
+  factory HistoryLog.fromMap(String id, Map<String, dynamic> map) {
+    return HistoryLog(
+      id: id,
+      title: map['title'] ?? '',
+      date: DateTime.tryParse(map['date'] ?? '') ?? DateTime.now(),
+      type: map['type'] ?? '',
+    );
+  }
+
+   HistoryLog copyWith({
+    String? id,
+    String? title,
+    DateTime? date,
+    String? type,
+  }) {
+    return HistoryLog(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      date: date ?? this.date,
+      type: type ?? this.type,
+    );
+  }
 }
+
+class LinkedAccount {
+  final String id;
+  final String name;
+  final String relationship;
+  // Storing nested HealthIssues directly in Firestore is complex.
+  // For mock, we store IDs. In real Firestore, this might be a subcollection or separate query.
+  final List<String> healthIssueIds; // Store IDs instead of full objects
+
+  LinkedAccount({
+    required this.id,
+    required this.name,
+    required this.relationship,
+    required this.healthIssueIds,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'relationship': relationship,
+      'healthIssueIds': healthIssueIds, // Store list of IDs
+    };
+  }
+
+  factory LinkedAccount.fromMap(String id, Map<String, dynamic> map) {
+    return LinkedAccount(
+      id: id,
+      name: map['name'] ?? '',
+      relationship: map['relationship'] ?? '',
+      // Ensure healthIssueIds is always a List<String>
+      healthIssueIds: List<String>.from(map['healthIssueIds'] ?? []), 
+    );
+  }
+
+  LinkedAccount copyWith({
+    String? id,
+    String? name,
+    String? relationship,
+    List<String>? healthIssueIds,
+  }) {
+    return LinkedAccount(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      relationship: relationship ?? this.relationship,
+      healthIssueIds: healthIssueIds ?? this.healthIssueIds,
+    );
+  }
+}
+
+// TODO: Add toMap/fromMap for UserProfile
 
 class UserProfile {
   final String name;
@@ -433,7 +579,7 @@ class UserProfile {
   final String preferredDoctor;
   final String language;
   String subscription;
-  
+
   UserProfile({
     required this.name,
     required this.dateOfBirth,
@@ -444,3 +590,4 @@ class UserProfile {
     required this.subscription,
   });
 }
+

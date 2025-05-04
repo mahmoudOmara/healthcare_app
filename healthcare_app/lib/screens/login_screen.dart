@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:healthcare_app/screens/otp_screen.dart'; // Import OTP Screen
+import 'package:provider/provider.dart'; // Import Provider
+import 'package:healthcare_app/services/mock/mock_auth_service.dart'; // Import Mock Auth Service
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,21 +12,72 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _phoneController = TextEditingController();
+  bool _isLoading = false;
+
+  Future<void> _sendOtp() async {
+    final phoneNumber = _phoneController.text.trim();
+    if (phoneNumber.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your phone number')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final mockAuthService = Provider.of<MockAuthService>(context, listen: false);
+
+    try {
+      await mockAuthService.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        codeSent: (String verificationId, int? resendToken) {
+          setState(() {
+            _isLoading = false;
+          });
+          print('Mock OTP Sent! Verification ID: $verificationId');
+          // Navigate to OTP screen
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OTPScreen(
+                phoneNumber: phoneNumber,
+                verificationId: verificationId, // Pass verificationId
+              ),
+            ),
+          );
+        },
+        verificationFailed: (String error) {
+          setState(() {
+            _isLoading = false;
+          });
+          print('Mock Verification Failed: $error');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to send OTP: $error')),
+          );
+        },
+      );
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      print('Error during mock phone verification: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An error occurred: ${e.toString()}')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Removed AppBar for a cleaner login look, adjust if needed
-      // appBar: AppBar(
-      //   title: const Text('Login'),
-      // ),
       body: Padding(
-        padding: const EdgeInsets.all(24.0), // Increased padding
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch, // Stretch buttons
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            // Placeholder for App Logo or Title
             Text(
               'Welcome Back',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
@@ -37,7 +90,6 @@ class _LoginScreenState extends State<LoginScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 40),
-            // TODO: Replace with a proper phone number input field (e.g., intl_phone_field)
             TextField(
               controller: _phoneController,
               decoration: const InputDecoration(
@@ -46,31 +98,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 prefixIcon: Icon(Icons.phone_outlined),
               ),
               keyboardType: TextInputType.phone,
+              enabled: !_isLoading, // Disable when loading
             ),
             const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {
-                // TODO: Implement phone number validation
-                final phoneNumber = _phoneController.text;
-                if (phoneNumber.isNotEmpty) { // Basic validation
-                  // TODO: Implement actual OTP sending logic here
-                  print('Requesting OTP for: $phoneNumber');
-                  // Navigate to OTP screen
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => OTPScreen(phoneNumber: phoneNumber),
-                    ),
-                  );
-                } else {
-                  // Show error if phone number is empty
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter your phone number')),
-                  );
-                }
-              },
-              child: const Text('Send OTP'),
-            ),
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ElevatedButton(
+                    onPressed: _sendOtp,
+                    child: const Text('Send OTP'),
+                  ),
           ],
         ),
       ),

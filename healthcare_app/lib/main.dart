@@ -6,8 +6,14 @@ import 'package:provider/provider.dart';
 import 'package:healthcare_app/providers/app_state.dart';
 import 'package:healthcare_app/services/notification_service.dart'; // Import NotificationService
 
-// Initialize NotificationService globally or pass it down
+// Import Mock Services (Remove/replace when using real Firebase)
+import 'package:healthcare_app/services/mock/mock_auth_service.dart';
+import 'package:healthcare_app/services/mock/mock_firestore_service.dart';
+
+// Initialize Services globally or provide them
 final NotificationService notificationService = NotificationService();
+final MockAuthService mockAuthService = MockAuthService(); // Use Mock Auth
+final MockFirestoreService mockFirestoreService = MockFirestoreService(); // Use Mock Firestore
 
 Future<void> main() async {
   // Ensure Flutter bindings are initialized
@@ -15,6 +21,11 @@ Future<void> main() async {
   
   // Initialize notification service
   await notificationService.init();
+  
+  // TODO: Initialize Firebase here when using real Firebase
+  // await Firebase.initializeApp(
+  //   options: DefaultFirebaseOptions.currentPlatform, // Use generated options
+  // );
   
   runApp(const MyApp());
 }
@@ -72,8 +83,14 @@ class MyApp extends StatelessWidget {
       ),
     );
 
-    return ChangeNotifierProvider(
-      create: (context) => AppState(), // Initialize state management
+    // Use MultiProvider to provide AppState and Mock Services
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => AppState(mockAuthService, mockFirestoreService)), // Pass mock services to AppState
+        Provider<MockAuthService>.value(value: mockAuthService),
+        Provider<MockFirestoreService>.value(value: mockFirestoreService),
+        // When using real Firebase, provide FirebaseAuth.instance and FirebaseFirestore.instance here
+      ],
       child: MaterialApp(
         title: 'Healthcare App Prototype',
         theme: ThemeData(
@@ -170,13 +187,20 @@ class MyApp extends StatelessWidget {
             brightness: Brightness.light,
           ),
         ),
-        // Use Consumer to check login state and show appropriate screen
-        home: Consumer<AppState>(
-          builder: (context, appState, child) {
-            // TODO: Replace this simple check with a more robust auth flow if needed
-            // For now, assume login happens and navigates to MainScreen
-            // A better approach might involve a splash screen or initial route check
-            return appState.isLoggedIn ? const MainScreen() : const LoginScreen();
+        // Use StreamBuilder to listen to auth state changes from MockAuthService
+        home: StreamBuilder<MockUser?>(
+          stream: mockAuthService.authStateChanges,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator())); // Show loading indicator
+            }
+            if (snapshot.hasData) {
+              // User is logged in (mocked)
+              return const MainScreen();
+            } else {
+              // User is logged out (mocked)
+              return const LoginScreen();
+            }
           },
         ),
         routes: {
